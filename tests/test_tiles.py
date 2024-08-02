@@ -9,10 +9,9 @@ M = K = N = 64
 # as a workaround, we use decorator to revert it back
 
 
-@allo.as_tile(  )
+@allo.as_tile()
 def single_tile[MT: int32, NT: int32](
         A: int8[M, K], B: int8[K, N], C: int16[M, N], i: index, j: index):
-
 
     # Loading memory from L3 to L1
     A_local: int8[MT, K] = A[i*MT:(i+1)*MT, :]
@@ -33,9 +32,7 @@ def matmul[MT: int32, NT: int32](A: int8[M, K], B: int8[K, N], C: int16[M, N]):
         single_tile[MT, NT](A, B, C, i, j)
 
 
-# mlir input and compilation configs to aries-opt. Example output
-# NB: {MT, NT} needs to be stretched to {M, N}. and be replaced with actual numbers
-
+# Mlir input and compilation configs to aries-opt:
 # module {
 #   func.func @single_tile(%A: memref<MxKxint8>, %B: memref<KxNxint8>, %C: memref<MxNxint16>) {
 #     affine.for %arg3 = 0 to MT {
@@ -52,14 +49,20 @@ def matmul[MT: int32, NT: int32](A: int8[M, K], B: int8[K, N], C: int16[M, N]):
 #     }
 #   }
 # }
+# NB: {MT, NT} needs to be stretched to {M, N}. and be replaced with actual numbers
 print(single_tile.source)
-import sys; sys.exit(0)
 
 # instantiate = [...] specifies the values for function type parameters
 s0 = allo.customize(single_tile.source, instantiate=[8, 8])
-s1 = allo.customize(matmul, instantiate=[8, 8])
-s1.compose(s0) 
 
+# schedule on single core
+s0.vectorize("i", 8)
+
+# compose the single_tile with matmul
+s1 = allo.customize(matmul, instantiate=[8, 8])
+s1.compose(s0)
+
+# get tile inside the grid to manipulate the tile placement
 tiles = s1.unfold("PE", axis=[0, 1])
 # can be used to construct inter-PE data resue for systolic array on FPGA targets
 # s.to(tiles[:, :-1].A, tiles[:, 1:].A, depth = 2)

@@ -214,7 +214,7 @@ def as_tile(**kwargs):
         #   `inspect` extracted code string to be wrong, so we save str directly
 
         # Get the grid index arguments and build a for-loop in python
-        mod.source = mutator.emit(f.__code__.co_name)  
+        mod.source = mutator.emit(name)  
 
         return mod
 
