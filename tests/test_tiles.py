@@ -33,7 +33,25 @@ def matmul[MT: int32, NT: int32](A: int8[M, K], B: int8[K, N], C: int16[M, N]):
         single_tile[MT, NT](A, B, C, i, j)
 
 
-# mlir input and compilation configs to aries-opt
+# mlir input and compilation configs to aries-opt. Example output
+# NB: {MT, NT} needs to be stretched to {M, N}. and be replaced with actual numbers
+
+# module {
+#   func.func @single_tile(%A: memref<MxKxint8>, %B: memref<KxNxint8>, %C: memref<MxNxint16>) {
+#     affine.for %arg3 = 0 to MT {
+#       affine.for %arg4 = 0 to NT {
+#         affine.for %arg5 = 0 to K {
+#         %0 = affine.load %arg1[%arg3, %arg5] : memref<MTxKxf32>
+#         %1 = affine.load %arg2[%arg5, %arg4] : memref<KxNTxf32>
+#         %2 = arith.mulf %0, %1 : f32
+#         %3 = affine.load %arg0[%arg3, %arg4] : memref<MTxNTxf32>
+#         %4 = arith.addf %3, %2 : f32
+#         affine.store %4, %arg0[%arg3, %arg4] : memref<MTxNTxf32>
+#         }
+#       }
+#     }
+#   }
+# }
 print(single_tile.source)
 import sys; sys.exit(0)
 
